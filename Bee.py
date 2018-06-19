@@ -99,7 +99,6 @@ class Bee:
         res = None
         if backup_dbname != 'None':
             sql_table_name = "select tablename from {}.`$_$Inception_backup_information$_$` where opid_time={}".format(backup_dbname, sequence)
-            print(sql_table_name)
             res = conn.dql(sql_table_name)
         if res:
             table_name = res[0][0]
@@ -137,7 +136,7 @@ def get_args(**inception_args_here):
         print(inception_args_here)
         print(cut_off_line)
 
-def show_info(arguments, Bee_version = 'Bee 0.1.1'):
+def show_info(arguments, Bee_version = 'Bee 0.2.0'):
     if arguments.get('help',False) is True:
         print(_doc)
     if arguments.get('version',False):
