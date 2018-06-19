@@ -16,25 +16,30 @@ Options:
 
 Example
 ```
+[root@datanode-2 17:37:41 ~/fanboshi/Hornet]
 #python Bee.py --user=innet --password=fanboshi --host=192.168.2.54 --port=3308 --enable-check --sql="update fandb.fan set uname = 6 where id>19;select * from fandb.fan;"
+select tablename from 192_168_2_54_3308_fandb.`$_$Inception_backup_information$_$` where opid_time='0_0_0'
 
-+----+---------+----------+-----------------+-----------------------------------------------+--------------------------------------------+---------------+----------+-------------------------+-----------------+---------+
-| id |  stage  | errlevel |   stafestatus   |                  errormessage                 |                    sql                     | affected_rows | sequence |      backup_dbname      | execute_time(s) | SQLSHA1 |
-+----+---------+----------+-----------------+-----------------------------------------------+--------------------------------------------+---------------+----------+-------------------------+-----------------+---------+
-| 1  | CHECKED |    0     | Audit completed |                      None                     | update fandb.fan set uname = 6 where id>19 |       2       | '0_0_0'  | 192_168_2_54_3308_fandb |        0        |         |
-| 2  | CHECKED |    1     | Audit completed | set the where condition for select statement. |          select * from fandb.fan           |       0       | '0_0_1'  |           None          |        0        |         |
-|    |         |          |                 |        Select only star is not allowed.       |                                            |               |          |                         |                 |         |
-+----+---------+----------+-----------------+-----------------------------------------------+--------------------------------------------+---------------+----------+-------------------------+-----------------+-------
++----+---------+----------+-----------------+-----------------------------------------------+--------------------------------------------+---------------+----------+-------------------------+--------------+---------+--------------------+
+| id |  stage  | errlevel |   stafestatus   |                  errormessage                 |                    sql                     | affected_rows | sequence |      backup_dbname      | execute_time | SQLSHA1 | rollback_statement |
++----+---------+----------+-----------------+-----------------------------------------------+--------------------------------------------+---------------+----------+-------------------------+--------------+---------+--------------------+
+| 1  | CHECKED |    0     | Audit completed |                      None                     | update fandb.fan set uname = 6 where id>19 |       2       | '0_0_0'  | 192_168_2_54_3308_fandb |      0       |         |                    |
+| 2  | CHECKED |    1     | Audit completed | set the where condition for select statement. |          select * from fandb.fan           |       0       | '0_0_1'  |           None          |      0       |         |                    |
+|    |         |          |                 |        Select only star is not allowed.       |                                            |               |          |                         |              |         |                    |
++----+---------+----------+-----------------+-----------------------------------------------+--------------------------------------------+---------------+----------+-------------------------+--------------+---------+--------------------+
 
-#python Bee.py --user=innet --password=fanboshi --host=192.168.2.54 --port=3308 --enable-execute --sql="update fandb.fan set uname = 6 where id=19"
+[root@datanode-2 17:39:44 ~/fanboshi/Hornet]
+#python Bee.py --user=innet --password=fanboshi --host=192.168.2.54 --port=3308 --enable-execute --sql="update fandb.fan set uname=666 where id=19"
+select tablename from 192_168_2_54_3308_fandb.`$_$Inception_backup_information$_$` where opid_time='1529401204_1324_0'
 
-+----+----------+----------+----------------------+--------------+--------------------------------------------+---------------+---------------------+-------------------------+-----------------+---------+
-| id |  stage   | errlevel |     stafestatus      | errormessage |                    sql                     | affected_rows |       sequence      |      backup_dbname      | execute_time(s) | SQLSHA1 |
-+----+----------+----------+----------------------+--------------+--------------------------------------------+---------------+---------------------+-------------------------+-----------------+---------+
-| 1  | EXECUTED |    0     | Execute Successfully |     None     | update fandb.fan set uname = 6 where id=19 |       1       | '1529153422_1222_0' | 192_168_2_54_3308_fandb |      0.010      |         |
-|    |          |          | Backup successfully  |              |                                            |               |                     |                         |                 |         |
-+----+----------+----------+----------------------+--------------+--------------------------------------------+---------------+---------------------+-------------------------+-----------------+---------+
++----+----------+----------+----------------------+--------------+--------------------------------------------+---------------+---------------------+-------------------------+--------------+---------+-------------------------------------------------------+
+| id |  stage   | errlevel |     stafestatus      | errormessage |                    sql                     | affected_rows |       sequence      |      backup_dbname      | execute_time | SQLSHA1 |                   rollback_statement                  |
++----+----------+----------+----------------------+--------------+--------------------------------------------+---------------+---------------------+-------------------------+--------------+---------+-------------------------------------------------------+
+| 1  | EXECUTED |    0     | Execute Successfully |     None     | update fandb.fan set uname=666 where id=19 |       1       | '1529401204_1324_0' | 192_168_2_54_3308_fandb |    0.000     |         | UPDATE `fandb`.`fan` SET id=19,uname='6' WHERE id=19; |
+|    |          |          | Backup successfully  |              |                                            |               |                     |                         |              |         |                                                       |
++----+----------+----------+----------------------+--------------+--------------------------------------------+---------------+---------------------+-------------------------+--------------+---------+-------------------------------------------------------+
 
+[root@datanode-2 17:40:04 ~/fanboshi/Hornet]
 #python Bee.py --user=innet --password=fanboshi --host=192.168.2.54 --port=3308 --enable-query-print --sql="select uname from fandb.fan where id=19"
 {
     "command": "select",
@@ -71,14 +76,18 @@ Example
         }
     ]
 }
+Selected columns:
+                        fandb.fan.uname
 
+[root@datanode-2 17:40:17 ~/fanboshi/Hornet]
 #cat sqlfile.sql | python Bee.py --user=innet --password=fanboshi --host=192.168.2.54 --port=3308 --enable-check
+select tablename from 192_168_2_54_3308_fandb.`$_$Inception_backup_information$_$` where opid_time='0_0_1'
 
-+----+---------+----------+-----------------+-----------------------------------------------+--------------------------------------------+---------------+----------+-------------------------+-----------------+---------+
-| id |  stage  | errlevel |   stafestatus   |                  errormessage                 |                    sql                     | affected_rows | sequence |      backup_dbname      | execute_time(s) | SQLSHA1 |
-+----+---------+----------+-----------------+-----------------------------------------------+--------------------------------------------+---------------+----------+-------------------------+-----------------+---------+
-| 1  | CHECKED |    1     | Audit completed | set the where condition for select statement. |          select * from fandb.fan           |       0       | '0_0_0'  |           None          |        0        |         |
-|    |         |          |                 |        Select only star is not allowed.       |                                            |               |          |                         |                 |         |
-| 2  | CHECKED |    0     | Audit completed |                      None                     | update fandb.fan set uname = 6 where id>19 |       2       | '0_0_1'  | 192_168_2_54_3308_fandb |        0        |         |
-+----+---------+----------+-----------------+-----------------------------------------------+--------------------------------------------+---------------+----------+-------------------------+-----------------+---------+
++----+---------+----------+-----------------+-----------------------------------------------+--------------------------------------------+---------------+----------+-------------------------+--------------+---------+--------------------+
+| id |  stage  | errlevel |   stafestatus   |                  errormessage                 |                    sql                     | affected_rows | sequence |      backup_dbname      | execute_time | SQLSHA1 | rollback_statement |
++----+---------+----------+-----------------+-----------------------------------------------+--------------------------------------------+---------------+----------+-------------------------+--------------+---------+--------------------+
+| 1  | CHECKED |    1     | Audit completed | set the where condition for select statement. |          select * from fandb.fan           |       0       | '0_0_0'  |           None          |      0       |         |                    |
+|    |         |          |                 |        Select only star is not allowed.       |                                            |               |          |                         |              |         |                    |
+| 2  | CHECKED |    0     | Audit completed |                      None                     | update fandb.fan set uname = 6 where id>19 |       2       | '0_0_1'  | 192_168_2_54_3308_fandb |      0       |         |                    |
++----+---------+----------+-----------------+-----------------------------------------------+--------------------------------------------+---------------+----------+-------------------------+--------------+---------+--------------------+
 ```
