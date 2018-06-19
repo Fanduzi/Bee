@@ -1,11 +1,11 @@
 #!/Users/TiM/.pyenv/versions/django_test/bin/python
 # -*- coding: utf8 -*-
 
-import pymysql
-import subprocess
-import logging
+import sys
 import fire
 import json
+import pymysql
+import logging
 
 from prettytable import PrettyTable
 
@@ -64,6 +64,10 @@ class Bee:
         with open(file, 'r') as sqlfile:
             sql_list = [ self.add_semicolon(x.strip()) for x in sqlfile.readlines() ]
         return ''.join(sql_list)
+    def stdin_to_string(self):
+        stdin_sql = sys.stdin.readlines()
+        sql_list = [self.add_semicolon(x.strip()) for x in stdin_sql]
+        return ''.join(sql_list)
     def magic_sql(self, orig_sql):
         assert isinstance('orig_sql', str), "Query must be string"
         dash = '--'
@@ -118,7 +122,7 @@ def get_args(**inception_args_here):
         print(inception_args_here)
         print(cut_off_line)
 
-def show_info(arguments, Bee_version = 'Bee 0.1.0'):
+def show_info(arguments, Bee_version = 'Bee 0.1.1'):
     if arguments.get('help',False) is True:
         print(_doc)
     if arguments.get('version',False):
@@ -163,20 +167,34 @@ https://github.com/Fanduzi
     db_user = arguments['user']
     db_password = arguments['password']
     sleep = arguments.get('sleep') if arguments.get('sleep',False) else 0
-    orig_sql = arguments.get('sql') if not arguments.get('file',False) else arguments.get('file')
     endisable_list = [ x for x in arguments.keys() if x.startswith('enable') or x.startswith('disable') and arguments[x] is True ]
     with Bee(db_host, db_port, db_user, db_password, sleep, *endisable_list) as _Bee:
+        if arguments.get('sql', False) or arguments.get('file', False):
+            orig_sql = arguments.get('sql') if not arguments.get('file', False) else _Bee.file_to_string(arguments['file'])
+            print('1')
+        else:
+            orig_sql = _Bee.stdin_to_string()
         magic_sql = _Bee.magic_sql(orig_sql)
         with Fandb(inception_host, inception_port, inception_user, inception_passwd, inception_db) as _Fandb:
             res = _Bee.run_inception(_Fandb, magic_sql)
             if verbose is True:
                 print(res)
-            if not arguments.get('enable_query_print',False):
+            if not arguments.get('enable_query_print', False):
                 _Bee.pretty_table(res)
             else:
-                dicts = eval(res[0][3])
-                json_dicts = json.dumps(dicts, indent=4)
+                res_dict = eval(res[0][3])
+                json_dicts = json.dumps(res_dict, indent=4)
                 print(json_dicts)
+                for col in res_dict["select_list"]:
+                    field = col['field']
+                    if not col.get('table', False):
+                        table_name = res_dict['table_ref'][0]['table']
+                        db_name = res_dict['table_ref'][0]['db']
+                    else:
+                        table_name = col['table']
+                        db_name = col['db']
+                    print('''Selected columns:
+                        {db_name}.{table_name}.{field}'''.format(db_name=db_name, table_name=table_name, field=field))
 
 
 
