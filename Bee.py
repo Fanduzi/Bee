@@ -94,11 +94,26 @@ class Bee:
     #     return state, result
     def run_inception(self, conn, sql):
         res = conn.dql(sql)
-        return res
+        return list(map(list,res))
+    def get_rollback_sql(self, conn, sequence, backup_dbname):
+        res = None
+        if backup_dbname != 'None':
+            sql_table_name = "select tablename from {}.`$_$Inception_backup_information$_$` where opid_time={}".format(backup_dbname, sequence)
+            print(sql_table_name)
+            res = conn.dql(sql_table_name)
+        if res:
+            table_name = res[0][0]
+            sql_rollback = "select rollback_statement from {}.{} where opid_time={}".format(backup_dbname, table_name, sequence)
+            res = conn.dql(sql_rollback)
+            rollback_statement = res[0][0] if res else ''
+        else:
+            rollback_statement = ''
+        return rollback_statement
     def pretty_table(self, inception_result):
-        title = (
+        title =(
             'id', 'stage', 'errlevel', 'stafestatus', 'errormessage', 'sql',
-            'affected_rows', 'sequence', 'backup_dbname','execute_time(s)', 'SQLSHA1'
+            'affected_rows', 'sequence', 'backup_dbname','execute_time',
+            'SQLSHA1', 'rollback_statement'
         )
         x = PrettyTable(title)
         for row in inception_result:
@@ -171,7 +186,6 @@ https://github.com/Fanduzi
     with Bee(db_host, db_port, db_user, db_password, sleep, *endisable_list) as _Bee:
         if arguments.get('sql', False) or arguments.get('file', False):
             orig_sql = arguments.get('sql') if not arguments.get('file', False) else _Bee.file_to_string(arguments['file'])
-            print('1')
         else:
             orig_sql = _Bee.stdin_to_string()
         magic_sql = _Bee.magic_sql(orig_sql)
@@ -180,6 +194,10 @@ https://github.com/Fanduzi
             if verbose is True:
                 print(res)
             if not arguments.get('enable_query_print', False):
+                with Fandb(db_host, db_port, db_user, db_password, '') as backupdb_conn:
+                    for row in res:
+                        rollback_statement = _Bee.get_rollback_sql(backupdb_conn, row[7], row[8])
+                        row.append(rollback_statement)
                 _Bee.pretty_table(res)
             else:
                 res_dict = eval(res[0][3])
