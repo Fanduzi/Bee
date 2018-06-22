@@ -82,16 +82,6 @@ class Bee:
             magic_args = []
         magic_sql = '/*' + host + port + password + user + sleep + ''.join(magic_args) + '*/' + 'inception_magic_start;' + self.add_semicolon(orig_sql) + 'inception_magic_commit;'
         return magic_sql
-    # def _subprocess(self, cmd):
-    #     child = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-    #     while child.poll() == None:
-    #         stdout_line = child.stdout.readline().strip()
-    #         if stdout_line:
-    #             logging.info(stdout_line)
-    #     logging.info(child.stdout.read().strip())
-    #     result = child.communicate()[0].strip()
-    #     state = child.returncode
-    #     return state, result
     def run_inception(self, conn, sql):
         res = conn.dql(sql)
         return list(map(list,res))
@@ -128,7 +118,7 @@ class Bee:
 def get_args(**inception_args_here):
     global arguments
     arguments = inception_args_here
-    if arguments.get('verbose',False):
+    if 'verbose' in arguments:
         global verbose
         verbose = True
         cut_off_line = '*'*len(repr(inception_args_here))
@@ -139,9 +129,27 @@ def get_args(**inception_args_here):
 def show_info(arguments, Bee_version = 'Bee 0.2.0'):
     if arguments.get('help',False) is True:
         print(_doc)
-    if arguments.get('version',False):
+    if 'version' in arguments:
         print(Bee_version)
 
+def get_col_recursive(res_dict):
+    for item in res_dict["select_list"]:
+        if 'subselect' in item:
+            """
+            标量子查询, 需要递归
+            """
+            new_item = item['subselect']
+            get_col_recursive(new_item)
+        else:
+            field = item['field']
+            if 'table' not in item:
+                table_name = res_dict['table_ref'][0]['table']
+                db_name = res_dict['table_ref'][0]['db']
+            else:
+                table_name = item['table']
+                db_name = item['db']
+            print('''Selected columns:
+                {db_name}.{table_name}.{field}'''.format(db_name=db_name, table_name=table_name, field=field))
 
 if __name__ == '__main__':
     _doc = """
@@ -170,7 +178,7 @@ https://github.com/Fanduzi
     fire.Fire(get_args)
     show_info(arguments)
 
-    log_file = arguments.get('log-file',False) if arguments.get('log-file',False) else 'Bee.log'
+    log_file = arguments.get('log-file') if 'log-file' in arguments else 'Bee.log'
     logging.basicConfig(level=logging.DEBUG,
                         format='%(asctime)s %(filename)s[line:%(lineno)d] %(levelname)s %(message)s',
                         datefmt='%Y-%m-%d %H:%M:%S',
@@ -180,11 +188,11 @@ https://github.com/Fanduzi
     db_port = arguments['port']
     db_user = arguments['user']
     db_password = arguments['password']
-    sleep = arguments.get('sleep') if arguments.get('sleep',False) else 0
+    sleep = arguments.get('sleep') if 'sleep' in arguments else 0
     endisable_list = [ x for x in arguments.keys() if x.startswith('enable') or x.startswith('disable') and arguments[x] is True ]
     with Bee(db_host, db_port, db_user, db_password, sleep, *endisable_list) as _Bee:
-        if arguments.get('sql', False) or arguments.get('file', False):
-            orig_sql = arguments.get('sql') if not arguments.get('file', False) else _Bee.file_to_string(arguments['file'])
+        if 'sql' in arguments or 'file' in arguments:
+            orig_sql = arguments.get('sql') if 'file' not in arguments else _Bee.file_to_string(arguments['file'])
         else:
             orig_sql = _Bee.stdin_to_string()
         magic_sql = _Bee.magic_sql(orig_sql)
@@ -192,7 +200,7 @@ https://github.com/Fanduzi
             res = _Bee.run_inception(_Fandb, magic_sql)
             if verbose is True:
                 print(res)
-            if not arguments.get('enable_query_print', False):
+            if 'enable_query_print' not in arguments:
                 with Fandb(db_host, db_port, db_user, db_password, '') as backupdb_conn:
                     for row in res:
                         rollback_statement = _Bee.get_rollback_sql(backupdb_conn, row[7], row[8])
@@ -202,16 +210,8 @@ https://github.com/Fanduzi
                 res_dict = eval(res[0][3])
                 json_dicts = json.dumps(res_dict, indent=4)
                 print(json_dicts)
-                for col in res_dict["select_list"]:
-                    field = col['field']
-                    if not col.get('table', False):
-                        table_name = res_dict['table_ref'][0]['table']
-                        db_name = res_dict['table_ref'][0]['db']
-                    else:
-                        table_name = col['table']
-                        db_name = col['db']
-                    print('''Selected columns:
-                        {db_name}.{table_name}.{field}'''.format(db_name=db_name, table_name=table_name, field=field))
+                get_col_recursive(res_dict)
+
 
 
 
