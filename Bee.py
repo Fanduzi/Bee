@@ -132,14 +132,25 @@ def show_info(arguments, Bee_version = 'Bee 0.2.0'):
     if 'version' in arguments:
         print(Bee_version)
 
-def get_col_recursive(res_dict):
+
+def is_queryable(conn, db_name, table_name, field):
+    sql = """select count(id)
+              from fandb.db_query_blacklist
+             where database_name_alias='{}' and table_name='{}' and column_name='{}' and is_queryable=0
+          """.format(db_name, table_name, field)
+    #print(sql)
+    res = conn.dql(sql)[0][0]
+    return res
+
+
+def get_col_recursive(conn, res_dict):
     for item in res_dict["select_list"]:
         if 'subselect' in item:
             """
             标量子查询, 需要递归
             """
             new_item = item['subselect']
-            get_col_recursive(new_item)
+            get_col_recursive(conn, new_item)
         else:
             field = item['field']
             if 'table' not in item:
@@ -150,6 +161,14 @@ def get_col_recursive(res_dict):
                 db_name = item['db']
             print('''Selected columns:
                 {db_name}.{table_name}.{field}'''.format(db_name=db_name, table_name=table_name, field=field))
+            res = is_queryable(conn, db_name, table_name, field)
+            if res != 0:
+                print('{db}.{table_name}.{field} is unqueryable!'.format(db=db_name, table_name=table_name, field=field))
+
+
+
+
+
 
 if __name__ == '__main__':
     _doc = """
@@ -210,10 +229,6 @@ https://github.com/Fanduzi
                 res_dict = eval(res[0][3])
                 json_dicts = json.dumps(res_dict, indent=4)
                 print(json_dicts)
-                get_col_recursive(res_dict)
-
-
-
-
-
+                with Fandb(db_host, db_port, db_user, db_password, '') as conn_query_blacklist:
+                    get_col_recursive(conn_query_blacklist, res_dict)
 
