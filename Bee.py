@@ -143,6 +143,19 @@ def is_queryable(conn, db_name, table_name, field):
     return res
 
 
+def get_db_and_table(conn, res_dict, item, field):
+    if 'table' not in item:
+        table_name = res_dict['table_ref'][0]['table']
+        db_name = res_dict['table_ref'][0]['db']
+    else:
+        table_name = item['table']
+        db_name = item['db']
+    print('''Selected columns:
+        {db_name}.{table_name}.{field}'''.format(db_name=db_name, table_name=table_name, field=field))
+    res = is_queryable(conn, db_name, table_name, field)
+    if res != 0:
+        print('{db}.{table_name}.{field} is unqueryable!'.format(db=db_name, table_name=table_name, field=field))
+
 def get_col_recursive(conn, res_dict):
     for item in res_dict["select_list"]:
         if 'subselect' in item:
@@ -152,19 +165,21 @@ def get_col_recursive(conn, res_dict):
             new_item = item['subselect']
             get_col_recursive(conn, new_item)
         else:
-            field = item['field']
-            if 'table' not in item:
-                table_name = res_dict['table_ref'][0]['table']
-                db_name = res_dict['table_ref'][0]['db']
+            if 'field' not in item:
+                """
+                聚合函数, 加减乘除等
+                """
+                for sub_item_value in item.values():
+                    if isinstance(sub_item_value, dict):
+                        field = sub_item_value['field']
+                        get_db_and_table(conn, res_dict, item, field)
+                    elif isinstance(sub_item_value, list):
+                        for _item in sub_item_value:
+                            field = _item['field']
+                            get_db_and_table(conn, res_dict, _item, field)
             else:
-                table_name = item['table']
-                db_name = item['db']
-            print('''Selected columns:
-                {db_name}.{table_name}.{field}'''.format(db_name=db_name, table_name=table_name, field=field))
-            res = is_queryable(conn, db_name, table_name, field)
-            if res != 0:
-                print('{db}.{table_name}.{field} is unqueryable!'.format(db=db_name, table_name=table_name, field=field))
-
+                field = item['field']
+                get_db_and_table(conn, res_dict, item, field)
 
 
 
@@ -231,4 +246,9 @@ https://github.com/Fanduzi
                 print(json_dicts)
                 with Fandb(db_host, db_port, db_user, db_password, '') as conn_query_blacklist:
                     get_col_recursive(conn_query_blacklist, res_dict)
+
+
+
+
+
 
